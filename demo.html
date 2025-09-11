@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cymatics + Chakras — Educational Detector & Visualizer</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--muted:#9aa4b2;--accent:#56a0ff}
+    body{font-family:Inter,system-ui,Segoe UI,Arial;margin:0;background:linear-gradient(#071021, #08111a);color:#e6eef6}
+    header{padding:20px;text-align:center}
+    h1{margin:.2rem 0;font-size:1.6rem}
+    p.lead{margin:.2rem auto;color:var(--muted);max-width:900px}
+    .container{display:grid;grid-template-columns:360px 1fr;gap:18px;padding:18px;max-width:1200px;margin:0 auto}
+    .card{background:rgba(255,255,255,0.02);padding:14px;border-radius:12px;box-shadow:0 6px 24px rgba(2,6,23,0.6);}
+    label{display:block;margin-top:8px;font-size:.9rem;color:var(--muted)}
+    button{background:var(--accent);border:none;padding:10px 12px;border-radius:10px;color:#042233;font-weight:600;cursor:pointer}
+    #visual {width:100%;height:420px;border-radius:8px;background:#fff0;display:block}
+    .chakras{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+    .chakra-row{display:flex;align-items:center;gap:8px}
+    .range-input{flex:1}
+    .small{font-size:.8rem;color:var(--muted)}
+    .alerts{margin-top:10px}
+    .alert{background:rgba(255,255,255,0.03);padding:10px;border-radius:8px;margin-top:8px}
+    footer{padding:12px;text-align:center;color:var(--muted);font-size:.85rem}
+    .top-warn{background:#3b1b1b;padding:12px;border-radius:8px;margin:12px auto;color:#ffd6d6;max-width:1200px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .counts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .count{background:rgba(255,255,255,0.02);padding:6px 8px;border-radius:8px;font-size:.85rem}
+    .muted-block{color:var(--muted);font-size:.9rem}
+    input[type=range]{width:100%}
+    .note{font-size:.85rem;color:var(--muted);margin-top:8px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Cymatics • Chakras • Frequency Detector</h1>
+    <p class="lead">An educational, interactive page that shows how sound (cymatics) relates to chakra-like frequency bands and how simple detection might be useful. This is a demo — results are illustrative, not medical or diagnostic.</p>
+  </header>
+
+  <div class="top-warn card">
+    <strong>Important safety & legal notes — read first</strong>
+    <ul>
+      <li>This tool is for education and self-exploration only. It is <strong>not</strong> medical, psychological, or spiritual advice.</li>
+      <li>Audio capture uses your microphone — be mindful of privacy and local laws before recording or sharing audio.</li>
+      <li>Chakra "detection" is a heuristic mapping from frequency bands to traditional chakra ideas. It is speculative and culturally contextual.</li>
+      <li>If you plan to use this in therapy, health, or public settings, consult qualified professionals and respect consent & privacy.</li>
+    </ul>
+  </div>
+
+  <main class="container">
+    <aside class="card">
+      <h3>How to use</h3>
+      <ol class="small">
+        <li>Click <strong>Start Microphone</strong> and allow microphone access.</li>
+        <li>Play or sing a tone, or let ambient sound reach the mic.</li>
+        <li>Watch the cymatics canvas and the chakra indicators below. Adjust chakra ranges if you want to experiment.</li>
+      </ol>
+
+      <div class="controls">
+        <button id="btnStart">Start Microphone</button>
+        <button id="btnStop" disabled>Stop</button>
+        <button id="btnCalibrate">Calibrate (sample noise)</button>
+      </div>
+
+      <div class="card" style="margin-top:10px">
+        <strong>Chakra bands (editable)</strong>
+        <p class="small muted-block">These are <em>approximate</em> demo ranges. Different traditions use different tunings. Change values to explore. The downloadable version has much tighter variencies and far more accurate. This may not work on your device. Under development</p>
+
+        <div class="chakras" id="chakraList">
+          <!-- JS will populate chakra rows -->
+        </div>
+
+        <div class="counts" id="counts"></div>
+      </div>
+
+      <div class="alerts">
+        <div class="alert">
+          <strong>What "detection" means</strong>
+          <p class="small">This page looks for peaks in frequency ranges you set. When a peak crosses a threshold, the UI marks that chakra as "active". Use this as a learning tool — not proof of spiritual states.</p>
+        </div>
+      </div>
+
+    </aside>
+
+    <section class="card">
+      <h3>Live Cymatics Visualizer</h3>
+      <canvas id="visual"></canvas>
+      <div class="note">Toggle the sliders on the left to tune chakra bands. The canvas shows a cymatics-like simulation driven by real audio FFT data.</div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="muted-block">Created for education. Modify freely. If you'd like a printable handout or condensed infographic, ask and I'll make one.</div>
+  </footer>
+
+  <script>
+    // --- Educational default chakra band objects (configurable by user) ---
+    const DEFAULT_CHAKRAS = [
+      {key:'root',label:'Root (base)',min:40, max:120},
+      {key:'sacral',label:'Sacral',min:120, max:320},
+      {key:'solar',label:'Solar Plexus',min:320, max:720},
+      {key:'heart',label:'Heart',min:720, max:1400},
+      {key:'throat',label:'Throat',min:1400, max:2600},
+      {key:'third',label:'Third Eye',min:2600, max:5200},
+      {key:'crown',label:'Crown',min:5200, max:11000}
+    ];
+
+    // --- UI wiring ---
+    const chakraList = document.getElementById('chakraList');
+    const countsDiv = document.getElementById('counts');
+    let chakraState = {};
+
+    function makeChakraRow(ch){
+      const wrapper = document.createElement('div'); wrapper.className='chakra-row';
+      const title = document.createElement('div'); title.style.width='110px'; title.innerHTML = `<strong>${ch.label}</strong><div class="small">${ch.min}–${ch.max} Hz</div>`;
+      const minIn = document.createElement('input'); minIn.type='number'; minIn.value=ch.min; minIn.style.width='70px';
+      const maxIn = document.createElement('input'); maxIn.type='number'; maxIn.value=ch.max; maxIn.style.width='70px';
+      const thresh = document.createElement('input'); thresh.type='range'; thresh.min=0; thresh.max=1; thresh.step=0.01; thresh.value=0.12; thresh.className='range-input';
+
+      minIn.addEventListener('change',()=>{ch.min=parseFloat(minIn.value)});
+      maxIn.addEventListener('change',()=>{ch.max=parseFloat(maxIn.value)});
+
+      wrapper.appendChild(title);
+      wrapper.appendChild(minIn);
+      wrapper.appendChild(maxIn);
+      wrapper.appendChild(thresh);
+
+      chakraState[ch.key] = {cfg:ch, thresh:parseFloat(thresh.value), count:0, active:false};
+
+      thresh.addEventListener('input',()=>{chakraState[ch.key].thresh=parseFloat(thresh.value)});
+      return wrapper;
+    }
+
+    DEFAULT_CHAKRAS.forEach(c=>chakraList.appendChild(makeChakraRow(Object.assign({},c))));
+
+    // counters
+    function refreshCounts(){
+      countsDiv.innerHTML='';
+      for(const k in chakraState){
+        const c = chakraState[k];
+        const el = document.createElement('div'); el.className='count';
+        el.textContent = `${c.cfg.label}: ${c.count}`;
+        countsDiv.appendChild(el);
+      }
+    }
+    refreshCounts();
+
+    // --- Audio + FFT setup ---
+    let audioCtx=null, analyser=null, source=null, dataArray=null, rafId=null;
+    const btnStart = document.getElementById('btnStart');
+    const btnStop = document.getElementById('btnStop');
+    const btnCal = document.getElementById('btnCalibrate');
+    const canvas = document.getElementById('visual');
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
+
+    function resizeCanvas(){ canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+    window.addEventListener('resize',resizeCanvas);
+
+    async function startMic(){
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ alert('Microphone not supported in this browser'); return; }
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      source = audioCtx.createMediaStreamSource(stream);
+
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 32768; // high resolution
+      const bufferLength = analyser.frequencyBinCount;
+      dataArray = new Uint8Array(bufferLength);
+
+      source.connect(analyser);
+
+      btnStart.disabled = true; btnStop.disabled = false;
+      drawLoop();
+    }
+
+    function stopMic(){
+      if(source && source.mediaStream){
+        source.mediaStream.getTracks().forEach(t=>t.stop());
+      }
+      if(rafId) cancelAnimationFrame(rafId);
+      if(audioCtx) audioCtx.close();
+      audioCtx=null; analyser=null; source=null; dataArray=null;
+      btnStart.disabled=false; btnStop.disabled=true;
+    }
+
+    btnStart.addEventListener('click', ()=>startMic());
+    btnStop.addEventListener('click', ()=>stopMic());
+    btnCal.addEventListener('click', ()=>calibrateNoise());
+
+    // --- Detection logic ---
+    function freqForIndex(binIndex){
+      if(!analyser) return 0;
+      const nyquist = audioCtx.sampleRate/2;
+      return binIndex * nyquist / analyser.frequencyBinCount;
+    }
+
+    function detectPeaks(){
+      if(!analyser) return {};
+      analyser.getByteFrequencyData(dataArray);
+      // find global peak
+      const bins = dataArray;
+      const results = {};
+      for(const k in chakraState){
+        results[k] = {energy:0,peakFreq:0,active:false};
+      }
+      // iterate bins and sum energy into chakra buckets
+      for(let i=0;i<bins.length;i++){
+        const f = freqForIndex(i);
+        const mag = bins[i];
+        for(const k in chakraState){
+          const c = chakraState[k].cfg;
+          if(f >= c.min && f <= c.max){
+            results[k].energy += mag;
+            if(mag > results[k].peakMag || !results[k].peakMag){ results[k].peakMag = mag; results[k].peakFreq = f; }
+          }
+        }
+      }
+      // normalize & threshold
+      for(const k in results){
+        const r = results[k];
+        // normalized energy: divide by bin count in range (approx)
+        const c = chakraState[k].cfg;
+        const binsInRange = Math.max(1, Math.round((c.max - c.min) / (audioCtx.sampleRate/2) * analyser.frequencyBinCount));
+        const norm = (r.energy / binsInRange) / 255; // 0..1
+        const active = norm > chakraState[k].thresh;
+        if(active){ chakraState[k].count += 1; chakraState[k].active = true; }
+        else chakraState[k].active = false;
+        r.norm = norm; r.active = active;
+      }
+      return results;
+    }
+
+    // --- Simple calibration: sample ambient noise to set baseline thresholds ---
+    async function calibrateNoise(){
+      if(!analyser){ alert('Start microphone first'); return; }
+      const samples=80; let accum = 0;
+      for(let i=0;i<samples;i++){
+        analyser.getByteFrequencyData(dataArray);
+        let sum=0; for(let j=0;j<dataArray.length;j++){ sum += dataArray[j]; }
+        accum += sum / dataArray.length; await new Promise(r=>setTimeout(r,30));
+      }
+      const avg = accum / samples / 255; // 0..1
+      // set all thresholds a bit above ambient
+      for(const k in chakraState){ chakraState[k].thresh = Math.min(0.5, Math.max(0.02, avg*1.5)); }
+      alert('Calibration complete — thresholds adjusted to ambient level. You can still fine-tune sliders.');
+    }
+
+    // --- Cymatics-like canvas drawing ---
+    function drawCymatics(peaks){
+      const w=canvas.width, h=canvas.height;
+      ctx.clearRect(0,0,w,h);
+      // background subtle gradient
+      const g = ctx.createLinearGradient(0,0,w,h); g.addColorStop(0,'rgba(4,10,18,0.8)'); g.addColorStop(1,'rgba(2,6,11,0.6)');
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+
+      // base particles influenced by signal
+      const centerX = w/2, centerY = h/2;
+      // order chakras by energy to create layers
+      const layers = Object.keys(chakraState).map(k=>({k,energy:(peaks[k]||{}).norm||0})).sort((a,b)=>b.energy-a.energy);
+
+      layers.forEach((lay, idx)=>{
+        const e = lay.energy; if(e<=0) return;
+        const radius = 40 + idx*28 + e*280;
+        const spikes = 6 + idx*2;
+        ctx.save(); ctx.translate(centerX,centerY);
+        ctx.globalAlpha = Math.min(0.85, 0.2 + e*1.2);
+        ctx.beginPath();
+        for(let i=0;i<spikes;i++){
+          const theta = (i/spikes) * Math.PI*2 + performance.now()/8000*(idx+1);
+          const r = radius + Math.sin(performance.now()/200 + i)*12*e;
+          const x = Math.cos(theta)*r, y = Math.sin(theta)*r;
+          if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        }
+        ctx.closePath();
+        ctx.lineWidth = 2+ e*6;
+        ctx.strokeStyle = `rgba(${40+idx*30},${120-idx*8},${200-idx*12},${0.9 - idx*0.06})`;
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // overlay small ripple based on strongest peak
+      let strongest = {k:null,energy:0}; for(const k in peaks){ if(peaks[k].norm > strongest.energy) strongest={k,energy:peaks[k].norm}; }
+      if(strongest.energy>0){
+        ctx.save(); ctx.globalAlpha = Math.min(0.6,strongest.energy*1.2);
+        const rippleR = 30 + strongest.energy*360;
+        ctx.beginPath(); ctx.arc(centerX, centerY, rippleR, 0, Math.PI*2); ctx.lineWidth=2; ctx.strokeStyle='rgba(180,210,255,0.08)'; ctx.stroke();
+        ctx.restore();
+      }
+
+    }
+
+    // --- main draw loop ---
+    function drawLoop(){
+      if(!analyser) return;
+      const peaks = detectPeaks();
+      // update counts display occasionally
+      refreshCounts();
+      // draw cymatics
+      drawCymatics(peaks);
+
+      // small HUD overlay for active chakras
+      ctx.save(); ctx.font='14px Inter'; ctx.fillStyle='rgba(230,238,246,0.9)'; let y=20;
+      for(const k in chakraState){
+        const s = chakraState[k];
+        if(s.active) ctx.fillText(`${s.cfg.label} • active (${Math.round((s.count))})`,10,y), y+=18;
+      }
+      ctx.restore();
+
+      rafId = requestAnimationFrame(drawLoop);
+    }
+
+    // ensure user can stop audio on page unload
+    window.addEventListener('pagehide', ()=>{ stopMic(); });
+
+  </script>
+</body>
+</html>
