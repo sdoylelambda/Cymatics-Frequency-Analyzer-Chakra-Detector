@@ -86,8 +86,14 @@
 
 									<h4>Current Availability</h4>
 
-										<li><a href="files/cymatics-frequncy-analyzer-chakra-detector.zip" class="button" download onclick="notifyDownload()">PC Free Download</a></li>
-									<p>With your help, we can bring this to the Web, Mac, iOS, Android, and Linux!</p>
+									<ul class="actions special">
+										<li>
+											<a href="files/cymatics-frequncy-analyzer-chakra-detector.zip"
+											class="button"
+											download
+											onclick="notifyDownload(event)">PC Free Download</a>
+										</li>									
+									</ul>									<p>With your help, we can bring this to the Web, Mac, iOS, Android, and Linux!</p>
 									<p>Future updates will also include a redesigned user interface and more features!</p>
 									<a href="demo.html"class="button large"><p>Simple Web version</p></a>
 								</header>
@@ -173,7 +179,12 @@
 									<a href="images/{219D11AB-D005-4534-8CB8-6E01984A846A}.png" class="image fit"><img src="images/{219D11AB-D005-4534-8CB8-6E01984A846A}.png" alt="" /></a>
 									<p>Different frequencies and sounds have long been associated with chakras in ancient traditions. This app lets you explore how your music may align with those traditional frequency bands.</p>
 									<ul class="actions special">
-										<li><a href="files/cymatics-frequncy-analyzer-chakra-detector.zip" class="button" download onclick="notifyDownload()">PC Free Download</a></li>
+										<li>
+											<a href="files/cymatics-frequncy-analyzer-chakra-detector.zip"
+											class="button"
+											download
+											onclick="notifyDownload(event)">PC Free Download</a>
+										</li>									
 									</ul>
 								</article>
 								<article>
@@ -218,7 +229,12 @@
 									<a href="images/{B4326BA2-3B7B-423D-8177-4EB8EA2B916E}.png" class="image fit"><img src="images/{B4326BA2-3B7B-423D-8177-4EB8EA2B916E}.png" alt="" /></a>
 									<p>Some traditions suggest that different tunings (e.g., 432 Hz vs. 440 Hz) can feel different emotionally or physiologically. This app can help you detect a song’s tuning and reflect on its potential impact.</p>
 									<ul class="actions special">
-										<li><a href="files/cymatics-frequncy-analyzer-chakra-detector.zip" class="button" download onclick="notifyDownload()">PC Free Download</a></li>
+										<li>
+											<a href="files/cymatics-frequncy-analyzer-chakra-detector.zip"
+											class="button"
+											download
+											onclick="notifyDownload(event)">PC Free Download</a>
+										</li>									
 									</ul>
 								</article>
 							</section>
@@ -318,18 +334,34 @@
 			<script src="assets/js/util.js"></script>
 			<script src="assets/js/main.js"></script>
 			<script>
-    function notifyDownload() {
-		fetch("/", {
-			method: "POST",
-			headers: { "Content-Type": "application/x-www-form-urlencoded" },
-			body: new URLSearchParams({
-			"form-name": "download-tracker", 
-			"filename": "cymatics-frequncy-analyzer-chakra-detector.zip"
-			}).toString()
-		})
-	.then(() => console.log("Download tracked ✅"))
-	.catch(err => console.error("Tracking failed", err));
-}
+				function notifyDownload(e) {
+					e.preventDefault(); // stop the default <a> so we can track first
+
+					const downloadUrl = e.target.getAttribute("href");
+					const filename = downloadUrl.split("/").pop(); // grab just the zip name
+
+					// Send to Netlify Forms
+					fetch("/", {
+						method: "POST",
+						headers: { "Content-Type": "application/x-www-form-urlencoded" },
+						body: new URLSearchParams({
+						"form-name": "download-tracker",
+						"filename": filename
+						}).toString()
+					})
+					.then(() => {
+						console.log("✅ Download tracked");
+						// After tracking, trigger the file download
+						window.location.href = downloadUrl;
+					})
+					.catch(err => {
+						console.error("❌ Tracking failed", err);
+						// Even if tracking fails, still give the download
+						window.location.href = downloadUrl;
+					});
+				}
+			</script>
+			
 
 
 	
