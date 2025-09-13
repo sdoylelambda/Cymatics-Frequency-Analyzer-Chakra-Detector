@@ -293,9 +293,9 @@
 						</section> -->
 
 						 <!-- Hidden form for Netlify Forms -->
-  <form name="download-tracker" netlify netlify-honeypot="bot-field" hidden>
-    <input type="text" name="filename" value="myProgram.zip">
-  </form>
+<form name="download-tracker" netlify netlify-honeypot="bot-field" hidden>
+  <input type="hidden" name="filename" value="">
+</form>
 
   <!-- Your download link -->
   <!-- <a href="files/cymatics-frequncy-analyzer-chakra-detector.zip" download onclick="notifyDownload()">Download My Program</a> -->
@@ -319,19 +319,17 @@
 			<script src="assets/js/main.js"></script>
 			<script>
     function notifyDownload() {
-      // Create a FormData object matching the hidden form
-      const form = document.forms['download-tracker'];
-      const formData = new FormData(form);
+		fetch("/", {
+			method: "POST",
+			headers: { "Content-Type": "application/x-www-form-urlencoded" },
+			body: new URLSearchParams({
+			"form-name": "download-tracker", 
+			"filename": "cymatics-frequncy-analyzer-chakra-detector.zip"
+			}).toString()
+		})
+	.then(() => console.log("Download tracked ✅"))
+	.catch(err => console.error("Tracking failed", err));
+}
 
-      // Post to Netlify to trigger email notification
-      fetch('/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          'form-name': 'download-tracker',
-          'filename': 'cymatics-frequncy-analyzer-chakra-detector'
-        })
-      }).catch(err => console.error('Tracking failed', err));
-    }
 
 	
