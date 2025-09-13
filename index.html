@@ -308,13 +308,15 @@
 							</section>
 						</section> -->
 
-						 <!-- Hidden form for Netlify Forms -->
-<form name="download-tracker" netlify netlify-honeypot="bot-field" hidden>
-  <input type="hidden" name="filename" value="">
-</form>
-
-  <!-- Your download link -->
-  <!-- <a href="files/cymatics-frequncy-analyzer-chakra-detector.zip" download onclick="notifyDownload()">Download My Program</a> -->
+						 <!-- Hidden form for Netlify Forms Download Tracker-->
+				<form name="download-tracker" netlify netlify-honeypot="bot-field" hidden>
+					<input type="hidden" name="form-name" value="download-tracker">
+					<input type="hidden" name="filename" value="">
+					<input type="hidden" name="timestamp" value="">
+					<input type="hidden" name="userAgent" value="">
+					<input type="hidden" name="pageUrl" value="">
+					<input type="hidden" name="referrer" value="">
+				</form>
 
 					</footer>
 
@@ -335,33 +337,41 @@
 			<script src="assets/js/main.js"></script>
 			<script>
 				function notifyDownload(e) {
-					e.preventDefault(); // stop the default <a> so we can track first
+					e.preventDefault(); // stop the instant navigation
 
 					const downloadUrl = e.target.getAttribute("href");
-					const filename = downloadUrl.split("/").pop(); // grab just the zip name
+					const filename = downloadUrl.split("/").pop();
 
-					// Send to Netlify Forms
+					// Extra tracking info
+					const timestamp = new Date().toISOString();
+					const userAgent = navigator.userAgent;
+					const pageUrl = window.location.href;
+					const referrer = document.referrer || "Direct Visit";
+
 					fetch("/", {
 						method: "POST",
 						headers: { "Content-Type": "application/x-www-form-urlencoded" },
 						body: new URLSearchParams({
 						"form-name": "download-tracker",
-						"filename": filename
+						"filename": filename,
+						"timestamp": timestamp,
+						"userAgent": userAgent,
+						"pageUrl": pageUrl,
+						"referrer": referrer
 						}).toString()
 					})
 					.then(() => {
 						console.log("✅ Download tracked");
-						// After tracking, trigger the file download
-						window.location.href = downloadUrl;
+						window.location.href = downloadUrl; // force download
 					})
 					.catch(err => {
 						console.error("❌ Tracking failed", err);
-						// Even if tracking fails, still give the download
-						window.location.href = downloadUrl;
+						window.location.href = downloadUrl; // still download
 					});
 				}
 			</script>
-			
+
+
 
 
 	
