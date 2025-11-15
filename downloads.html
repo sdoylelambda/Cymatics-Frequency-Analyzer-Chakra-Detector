@@ -177,6 +177,41 @@
 			<script src="assets/js/breakpoints.min.js"></script>
 			<script src="assets/js/util.js"></script>
 			<script src="assets/js/main.js"></script>
+            <script>
+				function notifyDownload(e) {
+					e.preventDefault(); // stop the instant navigation
+
+					const downloadUrl = e.target.getAttribute("href");
+					const filename = downloadUrl.split("/").pop();
+
+					// Extra tracking info
+					const timestamp = new Date().toISOString();
+					const userAgent = navigator.userAgent;
+					const pageUrl = window.location.href;
+					const referrer = document.referrer || "Direct Visit";
+
+					fetch("/", {
+						method: "POST",
+						headers: { "Content-Type": "application/x-www-form-urlencoded" },
+						body: new URLSearchParams({
+						"form-name": "download-tracker",
+						"filename": filename,
+						"timestamp": timestamp,
+						"userAgent": userAgent,
+						"pageUrl": pageUrl,
+						"referrer": referrer
+						}).toString()
+					})
+					.then(() => {
+						console.log("✅ Download tracked");
+						window.location.href = downloadUrl; // force download
+					})
+					.catch(err => {
+						console.error("❌ Tracking failed", err);
+						window.location.href = downloadUrl; // still download
+					});
+				}
+			</script>
 
 	</body>
 </html>
